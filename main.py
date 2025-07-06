@@ -429,7 +429,7 @@ for symbol in symbols:
 df = pd.DataFrame(risk_data).T
 df_transposed = df.T
 print(df_transposed.to_markdown())
-# --- Risikoanalyse als HTML-Tabelle anzeigen ---
+--- Risikoanalyse als HTML-Tabelle anzeigen ---
 st.markdown("### Risiko")
 
 ## Index umsortieren: zuerst Volatilität, dann Sharpe, dann Drawdown
