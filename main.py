@@ -664,7 +664,7 @@ if forecast_symbol:
                 title=f'Prognose für {forecast_symbol} mit Exponential Smoothing',
                 xaxis_title="Datum",
                 yaxis_title="Schlusskurs",
-                template=plotly_template,  # Nutze das zuvor definierte Dark/Light Mode Template
+                template="plotly_white",  # oder "plotly_dark", je nachdem, welches Standard-Theme du bevorzugst
                 hovermode="x unified",
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
             )
