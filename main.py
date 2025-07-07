@@ -364,7 +364,9 @@ for symbol in symbols:
         perf_data.append(row)
 
     except Exception as e:
-        st.warning(f"Fehler bei der Performance-Berechnung für {symbol}: {e}")
+        except Exception as e:
+        st.error(f"Ein Problem ist bei der Prognose-Erstellung aufgetreten: {e}")
+        st.error("Dies kann an fehlenden Daten, Netzwerkproblemen oder einem ungültigen Aktiensymbol liegen.")
 
 # --- Tabelle anzeigen ---
 if perf_data:
@@ -607,69 +609,84 @@ if forecast_symbol:
 
         # Überprüfen, ob genügend Daten vorhanden sind
         # Exponential Smoothing benötigt eine ausreichende Datenmenge, hier mindestens 60 Punkte für eine solide Basis
-        if len(forecast_df) < 60:
-            st.warning(
-                f"Nicht genügend historische Daten für {forecast_symbol} für eine zuverlässige Prognose verfügbar. Benötigt >60 Datenpunkte.")
-        else:
-            # Exponential Smoothing Modell trainieren
-            # `trend='add'` für einen additiven Trend (z.B. Kurs steigt konstant)
-            # `seasonal='add'` für additive Saisonalität (z.B. gleiche saisonale Schwankungen über die Zeit)
-            # `seasonal_periods=5` für wöchentliche Saisonalität bei täglichen Handelsdaten (5 Handelstage pro Woche)
-            model_fit = ExponentialSmoothing(
-                forecast_df['Close'],
-                trend='add',
-                seasonal='add',
-                seasonal_periods=5
-            ).fit()
+    else:
+    # --- HIER DIE DEBUGGING-ZEILEN EINFÜGEN ---
+    st.write("DEBUG: forecast_df Kopf (erste 5 Zeilen):")
+    st.write(forecast_df.head())
+    st.write("DEBUG: forecast_df Ende (letzte 5 Zeilen):")
+    st.write(forecast_df.tail())
+    st.write("DEBUG: forecast_df Fehlende Werte pro Spalte:")
+    st.write(forecast_df.isnull().sum())
 
-            # Zukünftige Datenpunkte für die Prognose erstellen (nur Handelstage)
-            last_date = forecast_df.index[-1]
-            future_dates = []
-            current_date = last_date + pd.Timedelta(days=1)
-            while len(future_dates) < forecast_period_days:
-                if current_date.dayofweek < 5:  # Montag=0, Sonntag=6 (nur Werktage)
-                    future_dates.append(current_date)
-                current_date += pd.Timedelta(days=1)
+    # Exponential Smoothing Modell trainieren
+    # `trend='add'` für einen additiven Trend (z.B. Kurs steigt konstant)
+    # `seasonal='add'` für additive Saisonalität (z.B. gleiche saisonale Schwankungen über die Zeit)
+    # `seasonal_periods=5` für wöchentliche Saisonalität bei täglichen Handelsdaten (5 Handelstage pro Woche)
+    model_fit = ExponentialSmoothing(
+        forecast_df['Close'],
+        trend='add',
+        seasonal='add',
+        seasonal_periods=5
+    ).fit()
 
-            # Prognose erstellen
-            forecast_values = model_fit.forecast(len(future_dates))
+    # Zukünftige Datenpunkte für die Prognose erstellen (nur Handelstage)
+    last_date = forecast_df.index[-1]
+    future_dates = []
+    current_date = last_date + pd.Timedelta(days=1)
+    while len(future_dates) < forecast_period_days:
+        if current_date.dayofweek < 5:  # Montag=0, Sonntag=6 (nur Werktage)
+            future_dates.append(current_date)
+        current_date += pd.Timedelta(days=1)
 
-            # Kombiniere historische und prognostizierte Daten für den Plot
-            # Erstelle eine Series aus den Prognosewerten mit den zukünftigen Daten als Index
-            forecast_series = pd.Series(forecast_values.values, index=future_dates)
+    # Prognose erstellen
+    forecast_values = model_fit.forecast(len(future_dates))
 
-            # Plotly Figur erstellen
-            fig_forecast = go.Figure()
+    # Kombiniere historische und prognostizierte Daten für den Plot
+    # Erstelle eine Series aus den Prognosewerten mit den zukünftigen Daten als Index
+    forecast_series = pd.Series(forecast_values.values, index=future_dates)
 
-            # Historische Daten hinzufügen
-            fig_forecast.add_trace(go.Scatter(
-                x=forecast_df.index,
-                y=forecast_df['Close'],
-                mode='lines',
-                name='Historischer Kurs',
-                line=dict(color='blue')
-            ))
+    # --- WEITERE DEBUGGING-ZEILEN HIER EINFÜGEN ---
+    st.write("DEBUG: forecast_series Kopf (erste 5 Prognosen):")
+    st.write(forecast_series.head())
+    st.write("DEBUG: forecast_series Ende (letzte 5 Prognosen):")
+    st.write(forecast_series.tail())
+    st.write("DEBUG: forecast_series Fehlende Werte pro Prognose:")
+    st.write(forecast_series.isnull().sum())
+    st.write("DEBUG: forecast_series Länge:", len(forecast_series))
 
-            # Prognose hinzufügen
-            fig_forecast.add_trace(go.Scatter(
-                x=forecast_series.index,
-                y=forecast_series.values,
-                mode='lines',
-                name='Prognose',
-                line=dict(color='red', dash='dash')
-            ))
+    # Plotly Figur erstellen
+    fig_forecast = go.Figure()
 
-            # Layout anpassen
-            fig_forecast.update_layout(
-                title=f'Prognose für {forecast_symbol} mit Exponential Smoothing',
-                xaxis_title="Datum",
-                yaxis_title="Schlusskurs",
-                template="plotly_white",  # oder "plotly_dark", je nachdem, welches Standard-Theme du bevorzugst
-                hovermode="x unified",
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-            )
-            st.plotly_chart(fig_forecast, use_container_width=True)
+    # Historische Daten hinzufügen
+    fig_forecast.add_trace(go.Scatter(
+        x=forecast_df.index,
+        y=forecast_df['Close'],
+        mode='lines',
+        name='Historischer Kurs',
+        line=dict(color='blue')
+    ))
 
-    except Exception as e:
-        st.error(f"Fehler bei der Prognose-Erstellung für {forecast_symbol}: {e}")
-        st.error("Stelle sicher, dass die Bibliothek 'statsmodels' installiert ist und genügend Daten vorhanden sind.")
+    # Prognose hinzufügen
+    fig_forecast.add_trace(go.Scatter(
+        x=forecast_series.index,
+        y=forecast_series.values,
+        mode='lines',
+        name='Prognose',
+        line=dict(color='red', dash='dash')
+    ))
+
+    # Layout anpassen (behalte das hardcodierte Template vorerst bei)
+    fig_forecast.update_layout(
+        title=f'Prognose für {forecast_symbol} mit Exponential Smoothing',
+        xaxis_title="Datum",
+        yaxis_title="Schlusskurs",
+        template="plotly_white",  # <-- Diese Zeile so lassen, bis der Plot funktioniert
+        hovermode="x unified",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+
+    # --- DEBUGGING: Plotly Figure Objekt selbst anzeigen ---
+    st.write("DEBUG: Plotly Figure Objekt (dies zeigt seine interne Struktur):")
+    st.write(fig_forecast)
+
+    st.plotly_chart(fig_forecast, use_container_width=True)
