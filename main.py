@@ -568,90 +568,108 @@ if not df.empty and all(col in df.columns for col in ["Open", "High", "Low", "Cl
     st.plotly_chart(fig, use_container_width=True)
 else:
     st.warning("Für dieses Intervall konnten keine Kursdaten geladen werden.")
-    import datetime
-    from prophet import Prophet
-    from prophet.plot import plot_plotly  # Für interaktive Prognose-Plots
-    import plotly.express as px  # Wird hier nicht direkt genutzt, aber gut zu haben
+import datetime
+import pandas as pd  # Sicherstellen, dass pandas importiert ist
+import plotly.graph_objects as go  # Sicherstellen, dass plotly.graph_objects importiert ist
 
-    # --- Prognose (Forecast) Abschnitt ---
-    st.markdown("## 📈 Aktienprognose")
+# NEUE IMPORT für Exponential Smoothing
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
-    # Auswahl der Aktie für die Prognose
-    if symbols:
-        forecast_symbol = st.selectbox(
-            "Wähle eine Aktie für die Prognose",
-            options=symbols,
-            key="forecast_stock_select"  # Wichtig: Ein eindeutiger Schlüssel, wenn es mehrere Selectboxen gibt
-        )
-    else:
-        st.info("Bitte wähle zuerst eine Aktie aus den oberen Auswahlfeldern, um eine Prognose zu erstellen.")
-        forecast_symbol = None
+# --- Prognose (Forecast) Abschnitt ---
+st.markdown("## 📈 Aktienprognose")
 
-    if forecast_symbol:
-        # Auswahl des Prognose-Horizonts
-        forecast_period_days = st.slider(
-            "Anzahl der Tage für die Prognose",
-            min_value=7, max_value=180, value=30, step=7  # Max 180 Tage, da länger sehr unsicher wird
-        )
+# Sicherstellen, dass ein Symbol für die Prognose ausgewählt ist
+if symbols:
+    forecast_symbol = st.selectbox(
+        "Wähle eine Aktie für die Prognose",
+        options=symbols,
+        key="forecast_stock_select"  # unique key to avoid duplicate widget error
+    )
+else:
+    st.info("Bitte wähle zuerst eine Aktie aus den oberen Auswahlfeldern, um eine Prognose zu erstellen.")
+    forecast_symbol = None
 
-        st.markdown(f"### Prognose für {forecast_symbol}")
-        st.info(
-            "ℹ️ Die Prognose basiert auf dem Prophet-Modell und verwendet historische Tagesdaten. Sie sollte nur als Indikator dienen und **keine Finanzberatung** darstellen. Aktienkurse sind von Natur aus unvorhersehbar.")
+if forecast_symbol:
+    forecast_period_days = st.slider(
+        "Anzahl der Tage für die Prognose",
+        min_value=7, max_value=180, value=30, step=7  # Max 180 Tage, da länger sehr unsicher wird
+    )
 
-        try:
-            # Lade historische Daten (Tagesdaten sind am besten für Prophet)
-            # Wir holen uns hier die Daten spezifisch für die Prognose
-            # Eine längere Historie (z.B. 5 Jahre) ist gut für das Modelltraining
-            forecast_df = yf.download(forecast_symbol, period="5y", interval="1d", auto_adjust=True)
-            forecast_df = forecast_df[['Close']].reset_index()
-            # Prophet erwartet Spaltennamen 'ds' (Datum) und 'y' (Wert)
-            forecast_df.columns = ['ds', 'y']
+    st.markdown(f"### Prognose für {forecast_symbol}")
+    st.info(
+        "ℹ️ Die Prognose basiert auf einem Exponential Smoothing Modell und sollte nur als Indikator dienen, nicht als Finanzberatung. Historische Daten bis heute werden verwendet.")
 
-            # Überprüfen, ob genügend Daten vorhanden sind
-            if len(forecast_df) < 50:  # Prophet braucht eine gewisse Datenmenge
-                st.warning(
-                    f"Nicht genügend historische Daten für {forecast_symbol} für eine zuverlässige Prognose verfügbar. Benötigt >50 Datenpunkte.")
-            else:
-                # Prophet Modell initialisieren und trainieren
-                # `daily_seasonality` kann nützlich sein, um Muster innerhalb eines Tages zu erkennen
-                # `weekly_seasonality` und `yearly_seasonality` für Wochen- und Jahresmuster
-                # `changepoint_prior_scale` regelt die Flexibilität des Modells bei Trendänderungen (Standard ist 0.05)
-                model = Prophet(
-                    daily_seasonality=False,  # Für Aktienkurse oft irrelevant, da nur Schlusskurse
-                    weekly_seasonality=True,
-                    yearly_seasonality=True,
-                    changepoint_prior_scale=0.05
-                )
-                model.fit(forecast_df)
+    try:
+        # Lade historische Daten (Tagesdaten sind am besten für ETS)
+        forecast_df = yf.download(forecast_symbol, period="5y", interval="1d",
+                                  auto_adjust=True)  # 5 Jahre für gute Basis
+        forecast_df = forecast_df[['Close']]  # Nur den Schlusskurs verwenden
 
-                # Erstelle einen DataFrame mit zukünftigen Datenpunkten für die Prognose
-                future = model.make_future_dataframe(periods=forecast_period_days)
+        # Überprüfen, ob genügend Daten vorhanden sind
+        # Exponential Smoothing benötigt eine ausreichende Datenmenge, hier mindestens 60 Punkte für eine solide Basis
+        if len(forecast_df) < 60:
+            st.warning(
+                f"Nicht genügend historische Daten für {forecast_symbol} für eine zuverlässige Prognose verfügbar. Benötigt >60 Datenpunkte.")
+        else:
+            # Exponential Smoothing Modell trainieren
+            # `trend='add'` für einen additiven Trend (z.B. Kurs steigt konstant)
+            # `seasonal='add'` für additive Saisonalität (z.B. gleiche saisonale Schwankungen über die Zeit)
+            # `seasonal_periods=5` für wöchentliche Saisonalität bei täglichen Handelsdaten (5 Handelstage pro Woche)
+            model_fit = ExponentialSmoothing(
+                forecast_df['Close'],
+                trend='add',
+                seasonal='add',
+                seasonal_periods=5
+            ).fit()
 
-                # Prognose erstellen
-                forecast = model.predict(future)
+            # Zukünftige Datenpunkte für die Prognose erstellen (nur Handelstage)
+            last_date = forecast_df.index[-1]
+            future_dates = []
+            current_date = last_date + pd.Timedelta(days=1)
+            while len(future_dates) < forecast_period_days:
+                if current_date.dayofweek < 5:  # Montag=0, Sonntag=6 (nur Werktage)
+                    future_dates.append(current_date)
+                current_date += pd.Timedelta(days=1)
 
-                # Prognose plotten (mit Plotly für Interaktivität)
-                fig_forecast = plot_plotly(model, forecast,
-                                           figsize=(900, 600))  # figsize wird von plot_plotly in px umgerechnet
-                fig_forecast.update_layout(
-                    title=f'Prognose für {forecast_symbol} für die nächsten {forecast_period_days} Tage',
-                    xaxis_title="Datum",
-                    yaxis_title="Schlusskurs",
-                    template=plotly_template,  # Nutze das zuvor definierte Dark/Light Mode Template
-                    hovermode="x unified"
-                )
-                # Legende positionieren
-                fig_forecast.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+            # Prognose erstellen
+            forecast_values = model_fit.forecast(len(future_dates))
 
-                st.plotly_chart(fig_forecast, use_container_width=True)
+            # Kombiniere historische und prognostizierte Daten für den Plot
+            # Erstelle eine Series aus den Prognosewerten mit den zukünftigen Daten als Index
+            forecast_series = pd.Series(forecast_values.values, index=future_dates)
 
-                # Optionale Anzeige der Prognose-Komponenten (Trend, Saisonalität)
-                # Beachte: plot_components verwendet Matplotlib, nicht Plotly.
-                st.markdown("#### Prognose-Komponenten (Trend, wöchentliche/jährliche Saisonalität)")
-                fig_components = model.plot_components(forecast)
-                st.pyplot(fig_components)  # Streamlit hat st.pyplot für Matplotlib-Figuren
+            # Plotly Figur erstellen
+            fig_forecast = go.Figure()
 
-        except Exception as e:
-            st.error(f"Fehler bei der Prognose-Erstellung für {forecast_symbol}: {e}")
-            st.error(
-                "Mögliche Ursachen: Nicht genügend Daten, Internetverbindungsprobleme oder 'prophet'-Bibliothek nicht korrekt installiert.")
+            # Historische Daten hinzufügen
+            fig_forecast.add_trace(go.Scatter(
+                x=forecast_df.index,
+                y=forecast_df['Close'],
+                mode='lines',
+                name='Historischer Kurs',
+                line=dict(color='blue')
+            ))
+
+            # Prognose hinzufügen
+            fig_forecast.add_trace(go.Scatter(
+                x=forecast_series.index,
+                y=forecast_series.values,
+                mode='lines',
+                name='Prognose',
+                line=dict(color='red', dash='dash')
+            ))
+
+            # Layout anpassen
+            fig_forecast.update_layout(
+                title=f'Prognose für {forecast_symbol} mit Exponential Smoothing',
+                xaxis_title="Datum",
+                yaxis_title="Schlusskurs",
+                template=plotly_template,  # Nutze das zuvor definierte Dark/Light Mode Template
+                hovermode="x unified",
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            )
+            st.plotly_chart(fig_forecast, use_container_width=True)
+
+    except Exception as e:
+        st.error(f"Fehler bei der Prognose-Erstellung für {forecast_symbol}: {e}")
+        st.error("Stelle sicher, dass die Bibliothek 'statsmodels' installiert ist und genügend Daten vorhanden sind.")
