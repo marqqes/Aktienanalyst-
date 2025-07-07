@@ -73,6 +73,24 @@ st.markdown(f"""
             background-color: rgba(220, 53, 69, 0.2); /* Hellrot */
             border-color: #dc3545;
         }}
+        section[data-testid="stSidebar"] > div {{
+            background-color: {background_color};
+        }}
+        div[data-baseweb="select"] > div {{
+            background-color: {background_color} !important;
+            color: {text_color} !important;
+        }}
+        div[data-baseweb="select"] * {{
+            color: {text_color} !important;
+        }}
+        input, textarea {{
+            background-color: {background_color} !important;
+            color: {text_color} !important;
+            border: 1px solid {text_color} !important;
+        }}
+        label, .stTextInput, .stSelectbox, .stMultiSelect {{
+            color: {text_color} !important;
+        }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -216,8 +234,11 @@ if all_data:
         ))
     fig.update_layout(
         xaxis_title="Datum", yaxis_title="Indexiert (%)", height=500,
-        template=plotly_template_global, # Hier den globalen Template verwenden
-        legend_title="Symbol"
+        template=plotly_template_global,
+        legend_title="Symbol",
+        plot_bgcolor=background_color,
+        paper_bgcolor=background_color,
+        font=dict(color=text_color)
     )
     st.plotly_chart(fig, use_container_width=True)
 else:
@@ -356,7 +377,7 @@ if combined_data:
 
     # Transponieren und anzeigen
     df_transposed_fund = df_combined.transpose()
-   # st.markdown("### 🧮 Fundamentaldaten & erweiterte Kennzahlen") # Titel hinzufügen
+    st.markdown("### 🧮 Fundamentaldaten & erweiterte Kennzahlen") # Titel hinzufügen
     st.markdown(df_transposed_fund.to_html(escape=False), unsafe_allow_html=True)
 else:
     st.info("Keine Fundamentaldaten verfügbar.")
@@ -666,11 +687,14 @@ if detail_symbol: # Nur fortfahren, wenn ein Symbol ausgewählt ist
 
 
         # Layout finalisieren
-        fig_detail.update_layout( # fig_detail umbenannt
-            height=250 * rows + 150, # Angepasste Höhe
+        fig_detail.update_layout(
+            height=250 * rows + 150,
             showlegend=True,
-            template=plotly_template_global, # Hier den globalen Template verwenden
-            xaxis_rangeslider_visible=False # Rangeslider ist nicht immer nötig, kann Platz sparen
+            template=plotly_template_global,
+            xaxis_rangeslider_visible=False,
+            plot_bgcolor=background_color,  # <- Hintergrundfarbe Plotbereich
+            paper_bgcolor=background_color,  # <- Hintergrundfarbe gesamter Chart
+            font=dict(color=text_color)  # <- Schriftfarbe (Achsen, Titel etc.)
         )
         # Update X-Achsen-Bereich für alle Subplots
         fig_detail.update_xaxes(rangeslider_visible=False, row=1, col=1) # Für Hauptchart den Rangeslider entfernen
