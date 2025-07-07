@@ -58,7 +58,6 @@ st.markdown(f"""
             background-color: {table_bg};
             color: {text_color};
         }}
-        }}
         /* Streamlit info, warning, error boxen anpassen */
         .stAlert {{
             color: {text_color}; /* Textfarbe für Alerts */
