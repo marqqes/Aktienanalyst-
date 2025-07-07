@@ -53,9 +53,11 @@ st.markdown(f"""
             padding: 8px;
             text-align: left;
         }}
-        th {{
+   th {{
+            text-align: left !important; /* Hinzugefügt, um die Ausrichtung zu erzwingen */
             background-color: {table_bg};
             color: {text_color};
+        }}
         }}
         /* Streamlit info, warning, error boxen anpassen */
         .stAlert {{
