@@ -356,7 +356,7 @@ if combined_data:
 
     # Transponieren und anzeigen
     df_transposed_fund = df_combined.transpose()
-    st.markdown("### 🧮 Fundamentaldaten & erweiterte Kennzahlen") # Titel hinzufügen
+   # st.markdown("### 🧮 Fundamentaldaten & erweiterte Kennzahlen") # Titel hinzufügen
     st.markdown(df_transposed_fund.to_html(escape=False), unsafe_allow_html=True)
 else:
     st.info("Keine Fundamentaldaten verfügbar.")
