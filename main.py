@@ -6,7 +6,6 @@ from plotly.subplots import make_subplots
 import datetime
 from prophet import Prophet
 import matplotlib.pyplot as plt
-import seaborn as sns
 import warnings
 
 warnings.filterwarnings("ignore")
