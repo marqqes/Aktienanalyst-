@@ -590,7 +590,6 @@ else:
     st.info("Bitte wähle zuerst eine Aktie für die Detailanalyse aus den oberen Auswahlfeldern.")
 
 if detail_symbol:  # Nur fortfahren, wenn ein Symbol ausgewählt ist
-    # KORRIGIERTER BEREICH START
     interval = st.selectbox(
         "Intervall auswählen",
         options=["1d", "1wk", "1mo", "3mo"],  # <-- HIER: yfinance-kompatible Strings!
@@ -622,7 +621,6 @@ if detail_symbol:  # Nur fortfahren, wenn ein Symbol ausgewählt ist
         st.error(
             f"Fehler: Das ausgewählte Intervall '{interval}' wird derzeit nicht unterstützt. Bitte wählen Sie ein anderes Intervall.")
         st.stop()  # Beendet die Ausführung des Skripts hier, um weitere Fehler zu vermeiden
-    # KORRIGIERTER BEREICH ENDE
 
     # --- Kursdaten laden ---
     # Die interval-Variable ist jetzt direkt yfinance-kompatibel
@@ -748,10 +746,23 @@ if detail_symbol:  # Nur fortfahren, wenn ein Symbol ausgewählt ist
         )
 
         try:
+            # NEUE MAPPING FÜR RESAMPLING FREQUENZEN
+            resample_frequency_map = {
+                "1d": "D",  # Täglich
+                "1wk": "W",  # Wöchentlich (Wochenende)
+                "1mo": "M",  # Monatlich (Monatsende)
+                "3mo": "Q"  # Quartalsweise (Quartalsende)
+            }
+
+            # Hole die passende Resampling-Frequenz
+            # Fallback ist der ursprüngliche Interval-String, sollte aber mit der Map nicht nötig sein
+            resample_freq = resample_frequency_map.get(interval, interval)
+
             # Re-index the series to ensure continuous dates for forecasting,
             # especially important for daily/weekly intervals where gaps might occur
             # Use 'linear' interpolation to fill missing values for forecast
-            df_resampled = df_detail['Close'].resample(interval).last().ffill().bfill()
+            # Hier verwenden wir die übersetzte Frequenz: resample_freq
+            df_resampled = df_detail['Close'].resample(resample_freq).last().ffill().bfill()
 
             # Ensure the series is long enough for Holt-Winters (at least a few data points)
             if len(df_resampled) < 2:  # Min 2 points for a trend
