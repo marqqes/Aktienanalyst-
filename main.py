@@ -2,7 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots # Wichtig für Subplots im Detailchart
+from plotly.subplots import make_subplots  # Wichtig für Subplots im Detailchart
 import datetime
 
 # NEUE IMPORT für Exponential Smoothing
@@ -17,13 +17,13 @@ if dark_mode:
     text_color = "#FAFAFA"
     table_bg = "#1e1e1e"
     table_text = "#FAFAFA"
-    plotly_template_global = "plotly_dark" # Umbenannt, um Konflikte zu vermeiden
+    plotly_template_global = "plotly_dark"  # Umbenannt, um Konflikte zu vermeiden
 else:
     background_color = "#FAFAFA"
     text_color = "#000000"
     table_bg = "#FFFFFF"
     table_text = "#000000"
-    plotly_template_global = "plotly_white" # Umbenannt, um Konflikte zu vermeiden
+    plotly_template_global = "plotly_white"  # Umbenannt, um Konflikte zu vermeiden
 
 # --- Globales CSS anwenden ---
 st.markdown(f"""
@@ -207,13 +207,14 @@ elif selected_names:
             }
 
 # --- Zeitraum auswählen ---
-period_comparison = st.selectbox("Zeitraum für Vergleich", ["1mo", "3mo", "6mo", "1y", "2y", "5y"], index=3) # Umbenannt
+period_comparison = st.selectbox("Zeitraum für Vergleich", ["1mo", "3mo", "6mo", "1y", "2y", "5y"],
+                                 index=3)  # Umbenannt
 
 # --- Daten abrufen ---
 all_data = {}
 for symbol in symbols:
     try:
-        df = yf.download(symbol, period=period_comparison, auto_adjust=True) # period_comparison verwenden
+        df = yf.download(symbol, period=period_comparison, auto_adjust=True)  # period_comparison verwenden
         df = df[['Close']].copy()
         df.rename(columns={'Close': symbol}, inplace=True)
         df = df.pct_change().add(1).cumprod().multiply(100)
@@ -261,7 +262,8 @@ for symbol in symbols:
             "Branche": info.get("industry", "N/A"),
             "Sektor": info.get("sector", "N/A"),
             "Marktkap. [Mrd $]": round(info.get("marketCap", 0) / 1e9, 2),
-            "Div.-Rendite [%]": round(info.get("dividendYield", 0) * 100, 2) if info.get("dividendYield") else 0.0 # Multipliziere mit 100 für %
+            "Div.-Rendite [%]": round(info.get("dividendYield", 0) * 100, 2) if info.get("dividendYield") else 0.0
+            # Multipliziere mit 100 für %
         })
     except Exception as e:
         st.warning(f"Daten für {symbol} konnten nicht geladen werden: {e}")
@@ -272,24 +274,26 @@ if rows:
     # Transponieren
     df_info_transposed = df_info.set_index("Symbol").transpose()
 
+
     # Prozentformatierung für Div.-Rendite und Marktkap. für Konsistenz
     def format_mixed(val, index_name=""):
         if isinstance(val, (int, float)):
             if "Rendite" in index_name:
                 return f"{val:.2f} %"
             elif "Marktkap" in index_name:
-                 return f"{val:,.2f}" # Tausender-Trennzeichen
+                return f"{val:,.2f}"  # Tausender-Trennzeichen
             return f"{val}"
         return val
 
+
     # HTML-Tabelle mit gestyltem Output
-    html_info = df_info_transposed.to_html(escape=False) # Vorheriges applymap hier nicht nötig
+    html_info = df_info_transposed.to_html(escape=False)  # Vorheriges applymap hier nicht nötig
 
     # Manuelle Formatierung nach dem to_html, um die Spaltennamen zu berücksichtigen
     # Dies ist komplexer, aber die beste Methode, wenn applymap/map nicht mehr gewünscht ist
     # Alternativ kann man `df_info_transposed.apply(lambda col: col.apply(lambda val: format_mixed(val, col.name)))` verwenden
     # aber der HTML-Export ist robuster. Für Einfachheit bleiben wir bei der direkten HTML-Anzeige.
-    st.markdown(html_info, unsafe_allow_html=True) # Direct HTML for flexibility
+    st.markdown(html_info, unsafe_allow_html=True)  # Direct HTML for flexibility
 else:
     st.info("Keine Unternehmensinformationen verfügbar.")
 
@@ -300,7 +304,7 @@ fundamentals = []
 
 for symbol in symbols:
     try:
-        ticker = yf.Ticker(symbol) # Ticker-Objekt hier wiederholen
+        ticker = yf.Ticker(symbol)  # Ticker-Objekt hier wiederholen
         info = ticker.info
 
         fundamentals.append({
@@ -332,7 +336,7 @@ for symbol in symbols:
         extra_fundamentals.append({
             "Symbol": symbol,
             "Name": meta_info.get(symbol, {}).get("name", symbol),
-            "Eigenkapitalrendite (ROE) [%]": round(roe * 100, 2) if roe is not None else "n/a", # * 100 für Prozent
+            "Eigenkapitalrendite (ROE) [%]": round(roe * 100, 2) if roe is not None else "n/a",  # * 100 für Prozent
             "Schuldenquote [%]": round(debt_to_equity, 2) if debt_to_equity is not None else "n/a",
             "Cash-Reserven [Mrd $]": total_cash_mrd if total_cash_mrd is not None else "n/a"
         })
@@ -346,7 +350,7 @@ combined_data = []
 # Sicherstellen, dass beide Listen gleich lang sind, oder entsprechend behandeln
 min_len = min(len(fundamentals), len(extra_fundamentals))
 for i in range(min_len):
-    base = fundamentals[i].copy() # Copy, um Original nicht zu ändern
+    base = fundamentals[i].copy()  # Copy, um Original nicht zu ändern
     extra = extra_fundamentals[i]
     base.update({
         "Eigenkapitalrendite (ROE) [%]": extra.get("Eigenkapitalrendite (ROE) [%]", "n/a"),
@@ -359,18 +363,20 @@ for i in range(min_len):
 if combined_data:
     df_combined = pd.DataFrame(combined_data).set_index("Symbol")
 
+
     # Analysten-Rating als Badge formatieren
     def format_badge(rating):
-        rating = str(rating).lower() # Sicherstellen, dass es ein String ist
+        rating = str(rating).lower()  # Sicherstellen, dass es ein String ist
         if "strong buy" in rating:
             return "<span style='background-color:#006400;color:white;padding:4px 8px;border-radius:6px;'>Strong Buy</span>"
         elif "buy" in rating:
             return "<span style='background-color:#28a745;color:white;padding:4px 8px;border-radius:6px;'>Buy</span>"
-        elif "hold" in rating or "neutral" in rating: # 'neutral' für Hold
+        elif "hold" in rating or "neutral" in rating:  # 'neutral' für Hold
             return "<span style='background-color:#ffc107;color:white;padding:4px 8px;border-radius:6px;'>Hold</span>"
         elif "sell" in rating:
             return "<span style='background-color:#dc3545;color:white;padding:4px 8px;border-radius:6px;'>Sell</span>"
-        return f"<span style='background-color:#6c757d;color:white;padding:4px 8px;border-radius:6px;'>{rating.capitalize()}</span>" # capitalize für N/A
+        return f"<span style='background-color:#6c757d;color:white;padding:4px 8px;border-radius:6px;'>{rating.capitalize()}</span>"  # capitalize für N/A
+
 
     # Sicherstellen, dass die Spalte existiert, bevor .apply() aufgerufen wird
     if "Analysten-Rating" in df_combined.columns:
@@ -378,11 +384,10 @@ if combined_data:
 
     # Transponieren und anzeigen
     df_transposed_fund = df_combined.transpose()
-    #st.markdown("### 🧮 Fundamentaldaten & erweiterte Kennzahlen") # Titel hinzufügen
+    # st.markdown("### 🧮 Fundamentaldaten & erweiterte Kennzahlen") # Titel hinzufügen
     st.markdown(df_transposed_fund.to_html(escape=False), unsafe_allow_html=True)
 else:
     st.info("Keine Fundamentaldaten verfügbar.")
-
 
 # --- Wertentwicklung berechnen ---
 st.markdown("### Wertentwicklung (Performance in %)")
@@ -394,15 +399,16 @@ perf_periods = {
     "1 Monat (%)": today - datetime.timedelta(days=30),
     "6 Monate (%)": today - datetime.timedelta(days=182),
     "1 Jahr (%)": today - datetime.timedelta(days=365),
-    "3 Jahre (%)": today - datetime.timedelta(days=3*365),
-    "5 Jahre (%)": today - datetime.timedelta(days=5*365)
+    "3 Jahre (%)": today - datetime.timedelta(days=3 * 365),
+    "5 Jahre (%)": today - datetime.timedelta(days=5 * 365)
 }
 
 perf_data = []
 
 for symbol in symbols:
     try:
-        df_perf = yf.download(symbol, start=min(perf_periods.values()), end=today + datetime.timedelta(days=1), auto_adjust=True)
+        df_perf = yf.download(symbol, start=min(perf_periods.values()), end=today + datetime.timedelta(days=1),
+                              auto_adjust=True)
 
         if df_perf.empty or "Close" not in df_perf:
             raise ValueError("Keine gültigen Preisdaten erhalten für Performance-Berechnung")
@@ -418,11 +424,11 @@ for symbol in symbols:
                 start_price_val = float(start_price_series.iloc[0])
                 end_price_val = float(end_price)
 
-                if start_price_val != 0: # Division durch Null vermeiden
+                if start_price_val != 0:  # Division durch Null vermeiden
                     change = ((end_price_val - start_price_val) / start_price_val) * 100
                     row[label] = round(change, 2)
                 else:
-                    row[label] = None # Oder 'N/A' wenn Startpreis 0 war
+                    row[label] = None  # Oder 'N/A' wenn Startpreis 0 war
             else:
                 row[label] = None
 
@@ -439,14 +445,16 @@ if perf_data:
     # Transponieren
     perf_df_transposed = perf_df.transpose()
 
+
     # HTML-Tabelle mit Prozentformatierung
     def format_percent(val):
         try:
-            if val is None: # Behandle None, falls oben None zugewiesen wurde
+            if val is None:  # Behandle None, falls oben None zugewiesen wurde
                 return "N/A"
             return f"{val:.2f} %"
         except:
             return val
+
 
     perf_html = perf_df_transposed.map(format_percent).to_html(escape=False)
 
@@ -455,7 +463,7 @@ else:
     st.info("Keine Performance-Daten verfügbar.")
 
 # Risikoanalyse
-periods_risk = { # Umbenannt, um Konflikt mit perf_periods zu vermeiden
+periods_risk = {  # Umbenannt, um Konflikt mit perf_periods zu vermeiden
     "1 Monat": today - datetime.timedelta(days=30),
     "6 Monate": today - datetime.timedelta(days=182),
     "1 Jahr": today - datetime.timedelta(days=365),
@@ -466,30 +474,32 @@ periods_risk = { # Umbenannt, um Konflikt mit perf_periods zu vermeiden
 risk_data = {}
 
 for symbol in symbols:
-    try: # try-block um yf.Ticker und hist.history
+    try:  # try-block um yf.Ticker und hist.history
         ticker = yf.Ticker(symbol)
-        hist = ticker.history(start=min(periods_risk.values()), end=today + datetime.timedelta(days=1)) # periods_risk verwenden
+        hist = ticker.history(start=min(periods_risk.values()),
+                              end=today + datetime.timedelta(days=1))  # periods_risk verwenden
 
         risk_data[symbol] = {}
-        for label, start_date in periods_risk.items(): # periods_risk verwenden
+        for label, start_date in periods_risk.items():  # periods_risk verwenden
             # tz_localize nur anwenden, wenn der Index keine Zeitzone hat
             start_ts = pd.Timestamp(start_date)
             if hist.index.tz is None:
-                 start_ts = start_ts.tz_localize('UTC') # oder eine passende Zeitzone
-                 df_risk = hist[hist.index >= start_ts].copy()
+                start_ts = start_ts.tz_localize('UTC')  # oder eine passende Zeitzone
+                df_risk = hist[hist.index >= start_ts].copy()
             else:
-                 start_ts = start_ts.tz_localize(hist.index.tz)
-                 df_risk = hist[hist.index >= start_ts].copy()
+                start_ts = start_ts.tz_localize(hist.index.tz)
+                df_risk = hist[hist.index >= start_ts].copy()
 
             if len(df_risk) > 1:
                 df_risk["Return"] = df_risk["Close"].pct_change()
                 # Entferne NaN-Werte aus der Return-Spalte für die Berechnung
                 clean_returns = df_risk["Return"].dropna()
-                if len(clean_returns) > 0: # Nur berechnen, wenn Returns vorhanden
+                if len(clean_returns) > 0:  # Nur berechnen, wenn Returns vorhanden
                     volatility = clean_returns.std() * (252 ** 0.5)
                     # Sharpe Ratio: Annahme risikofreier Zinssatz = 0.
                     # Berechnung vereinfacht: Mean Return / Std Dev of Return
-                    sharpe_ratio = clean_returns.mean() / clean_returns.std() * (252 ** 0.5) if clean_returns.std() != 0 else 0.0
+                    sharpe_ratio = clean_returns.mean() / clean_returns.std() * (
+                                252 ** 0.5) if clean_returns.std() != 0 else 0.0
 
                     # Max Drawdown
                     cumulative = (1 + clean_returns).cumprod()
@@ -498,38 +508,40 @@ for symbol in symbols:
                         drawdown = (cumulative - peak) / peak
                         max_drawdown = drawdown.min()
                     else:
-                        max_drawdown = 0.0 # Standardwert, wenn keine Daten
+                        max_drawdown = 0.0  # Standardwert, wenn keine Daten
 
                     risk_data[symbol][f"Volatilität {label} (%)"] = round(volatility * 100, 2)
                     risk_data[symbol][f"Sharpe Ratio {label}"] = round(sharpe_ratio, 2)
                     risk_data[symbol][f"Max. Drawdown {label} (%)"] = round(max_drawdown * 100, 2)
-                else: # Keine Returns nach dropna
+                else:  # Keine Returns nach dropna
                     risk_data[symbol][f"Volatilität {label} (%)"] = None
                     risk_data[symbol][f"Sharpe Ratio {label}"] = None
                     risk_data[symbol][f"Max. Drawdown {label} (%)"] = None
-            else: # Weniger als 2 Datenpunkte
+            else:  # Weniger als 2 Datenpunkte
                 risk_data[symbol][f"Volatilität {label} (%)"] = None
                 risk_data[symbol][f"Sharpe Ratio {label}"] = None
                 risk_data[symbol][f"Max. Drawdown {label} (%)"] = None
     except Exception as e:
         st.warning(f"Fehler bei Risikoanalyse für {symbol}: {e}")
 
-df_risk = pd.DataFrame(risk_data).T # Umbenannt, um Konflikt mit anderen df zu vermeiden
+df_risk = pd.DataFrame(risk_data).T  # Umbenannt, um Konflikt mit anderen df zu vermeiden
 
 # --- Risikoanalyse als HTML-Tabelle anzeigen ---
 st.markdown("### Risiko")
 
 if not df_risk.empty:
-    df_transposed_risk = df_risk.T # Transponieren nur, wenn df_risk nicht leer ist
+    df_transposed_risk = df_risk.T  # Transponieren nur, wenn df_risk nicht leer ist
     # Index umsortieren: zuerst Volatilität, dann Sharpe, dann Drawdown
     sort_order = []
     for metric in ["Volatilität", "Sharpe Ratio", "Max. Drawdown"]:
-        for period_label in periods_risk.keys(): # Korrekte Verwendung von periods_risk.keys()
-            sort_order.append(f"{metric} {period_label} (%)" if "Drawdown" in metric or "Volatilität" in metric else f"{metric} {period_label}")
+        for period_label in periods_risk.keys():  # Korrekte Verwendung von periods_risk.keys()
+            sort_order.append(
+                f"{metric} {period_label} (%)" if "Drawdown" in metric or "Volatilität" in metric else f"{metric} {period_label}")
 
     # Index sortieren - nur die vorhandenen Indizes verwenden
     valid_sort_order = [idx for idx in sort_order if idx in df_transposed_risk.index]
     df_sorted_risk = df_transposed_risk.reindex(valid_sort_order)
+
 
     # Formatierung anwenden
     def format_metric(val):
@@ -538,11 +550,13 @@ if not df_risk.empty:
                 return "N/A"
             # Nur Volatilität und Drawdown als Prozent formatieren
             if "Volatilität" in str(df_sorted_risk.index[df_sorted_risk.values == val]) or \
-               "Drawdown" in str(df_sorted_risk.index[df_sorted_risk.values == val]): # Dies ist eine sehr einfache, aber potenziell ungenaue Weise zu prüfen.
+                    "Drawdown" in str(df_sorted_risk.index[
+                                          df_sorted_risk.values == val]):  # Dies ist eine sehr einfache, aber potenziell ungenaue Weise zu prüfen.
                 return f"{val:.2f} %"
-            return f"{val:.2f}" # Für Sharpe Ratio und andere numerische Werte
+            return f"{val:.2f}"  # Für Sharpe Ratio und andere numerische Werte
         except (ValueError, TypeError):
             return "-"
+
 
     # Bessere Formatierung: Iteriere über die Indizes, um den Typ zu bestimmen
     formatted_data = {}
@@ -553,12 +567,12 @@ if not df_risk.empty:
             if "Volatilität" in idx or "Drawdown" in idx:
                 formatted_data[col].append(f"{val:.2f} %" if isinstance(val, (int, float)) else "N/A")
             elif "Sharpe Ratio" in idx:
-                 formatted_data[col].append(f"{val:.2f}" if isinstance(val, (int, float)) else "N/A")
+                formatted_data[col].append(f"{val:.2f}" if isinstance(val, (int, float)) else "N/A")
             else:
-                 formatted_data[col].append(val if val is not None else "N/A") # Für andere Fälle, die hier nicht vorkommen sollten
+                formatted_data[col].append(
+                    val if val is not None else "N/A")  # Für andere Fälle, die hier nicht vorkommen sollten
 
     df_formatted_risk = pd.DataFrame(formatted_data, index=df_sorted_risk.index)
-
 
     risk_html_sorted = df_formatted_risk.to_html(escape=False)
     st.markdown(risk_html_sorted, unsafe_allow_html=True)
@@ -575,11 +589,12 @@ else:
     detail_symbol = None
     st.info("Bitte wähle zuerst eine Aktie für die Detailanalyse aus den oberen Auswahlfeldern.")
 
-if detail_symbol: # Nur fortfahren, wenn ein Symbol ausgewählt ist
+if detail_symbol:  # Nur fortfahren, wenn ein Symbol ausgewählt ist
+    # KORRIGIERTER BEREICH START
     interval = st.selectbox(
         "Intervall auswählen",
-        options=["1 Tag", "1 Woche", "1 Monat", "3 Monate"],
-        index=2,
+        options=["1d", "1wk", "1mo", "3mo"],  # <-- HIER: yfinance-kompatible Strings!
+        index=0,  # Setzt "1d" als Standardauswahl
         key="detail_interval_select"
     )
 
@@ -588,16 +603,31 @@ if detail_symbol: # Nur fortfahren, wenn ein Symbol ausgewählt ist
     show_volume = st.checkbox("Volumen anzeigen", key="show_volume_check")
     show_rsi = st.checkbox("RSI anzeigen", key="show_rsi_check")
 
+    # Aktualisierte interval_period_map für die neuen Optionen
     interval_period_map = {
+        # Bestehende Einträge (falls noch irgendwo anders im Code verwendet)
         "15m": "15d",
-        "1h": "40d",
-        "1d": "1y",
-        "1wk": "5y"
+        "1h": "60d",  # Angepasst: 40d ist evtl. zu kurz für 1h Daten
+        # Neu hinzugefügte und korrigierte Einträge, passend zu den Selectbox-Optionen
+        "1d": "1y",  # 1 Jahr Daten für täglichen Chart
+        "1wk": "5y",  # 5 Jahre Daten für wöchentlichen Chart
+        "1mo": "10y",  # 10 Jahre Daten für monatlichen Chart
+        "3mo": "max"  # Maximal verfügbare Daten für vierteljährlichen Chart (oder z.B. "20y")
     }
-    period_detail = interval_period_map.get(interval) # Umbenannt
+
+    period_detail = interval_period_map.get(interval)
+
+    # Optional: Zusätzliche Prüfung für den Fall, dass das Intervall nicht gemappt wurde (sollte jetzt nicht mehr passieren)
+    if period_detail is None:
+        st.error(
+            f"Fehler: Das ausgewählte Intervall '{interval}' wird derzeit nicht unterstützt. Bitte wählen Sie ein anderes Intervall.")
+        st.stop()  # Beendet die Ausführung des Skripts hier, um weitere Fehler zu vermeiden
+    # KORRIGIERTER BEREICH ENDE
 
     # --- Kursdaten laden ---
-    df_detail = yf.download(detail_symbol, period=period_detail, interval=interval, auto_adjust=True) # df_detail umbenannt
+    # Die interval-Variable ist jetzt direkt yfinance-kompatibel
+    df_detail = yf.download(detail_symbol, period=period_detail, interval=interval,
+                            auto_adjust=True)  # df_detail umbenannt
     df_detail.index = pd.to_datetime(df_detail.index)
     df_detail.sort_index(inplace=True)
 
@@ -608,7 +638,8 @@ if detail_symbol: # Nur fortfahren, wenn ein Symbol ausgewählt ist
     df_detail = df_detail.copy()
 
     # --- Candlestick-Plot ---
-    if not df_detail.empty and all(col in df_detail.columns for col in ["Open", "High", "Low", "Close", "Volume"]): # Volume hinzugefügt
+    if not df_detail.empty and all(
+            col in df_detail.columns for col in ["Open", "High", "Low", "Close", "Volume"]):  # Volume hinzugefügt
         # Subplots vorbereiten
         rows = 1
         row_heights = [0.6]
@@ -623,7 +654,7 @@ if detail_symbol: # Nur fortfahren, wenn ein Symbol ausgewählt ist
             row_heights.append(0.2)
             subplot_titles.append("RSI (14)")
 
-        fig_detail = make_subplots( # fig_detail umbenannt
+        fig_detail = make_subplots(  # fig_detail umbenannt
             rows=rows, cols=1,
             shared_xaxes=True,
             vertical_spacing=0.03,
@@ -641,7 +672,7 @@ if detail_symbol: # Nur fortfahren, wenn ein Symbol ausgewählt ist
             increasing_line_color='green',
             decreasing_line_color='red',
             showlegend=True
-        ), row=1, col=1) # Row und Col explizit gesetzt
+        ), row=1, col=1)  # Row und Col explizit gesetzt
 
         # --- SMA 50 ---
         if show_sma50:
@@ -659,7 +690,7 @@ if detail_symbol: # Nur fortfahren, wenn ein Symbol ausgewählt ist
                 name="SMA 200", line=dict(color='teal', width=2)
             ), row=1, col=1)
 
-        row_idx_current = 2 # Start für Volumen/RSI
+        row_idx_current = 2  # Start für Volumen/RSI
         if show_volume:
             fig_detail.add_trace(go.Bar(
                 x=df_detail.index, y=df_detail["Volume"],
@@ -672,7 +703,7 @@ if detail_symbol: # Nur fortfahren, wenn ein Symbol ausgewählt ist
             delta = df_detail["Close"].diff()
             gain = delta.where(delta > 0, 0)
             loss = -delta.where(delta < 0, 0)
-            avg_gain = gain.ewm(com=13, adjust=False).mean() # Exponentieller gleitender Durchschnitt
+            avg_gain = gain.ewm(com=13, adjust=False).mean()  # Exponentieller gleitender Durchschnitt
             avg_loss = loss.ewm(com=13, adjust=False).mean()
             rs = avg_gain / avg_loss
             df_detail["RSI"] = 100 - (100 / (1 + rs))
@@ -686,7 +717,6 @@ if detail_symbol: # Nur fortfahren, wenn ein Symbol ausgewählt ist
             fig_detail.add_hline(y=70, line_dash="dot", line_color="red", row=row_idx_current, col=1)
             fig_detail.add_hline(y=30, line_dash="dot", line_color="green", row=row_idx_current, col=1)
 
-
         # Layout finalisieren
         fig_detail.update_layout(
             height=250 * rows + 150,
@@ -698,15 +728,15 @@ if detail_symbol: # Nur fortfahren, wenn ein Symbol ausgewählt ist
             font=dict(color=text_color)  # <- Schriftfarbe (Achsen, Titel etc.)
         )
         # Update X-Achsen-Bereich für alle Subplots
-        fig_detail.update_xaxes(rangeslider_visible=False, row=1, col=1) # Für Hauptchart den Rangeslider entfernen
+        fig_detail.update_xaxes(rangeslider_visible=False, row=1, col=1)  # Für Hauptchart den Rangeslider entfernen
         # Andere X-Achsen sollen auch keine Rangeslider haben, aber ihre Ranges vom Hauptchart teilen
         for i in range(2, rows + 1):
-             fig_detail.update_xaxes(rangeslider_visible=False, row=i, col=1)
-
+            fig_detail.update_xaxes(rangeslider_visible=False, row=i, col=1)
 
         st.plotly_chart(fig_detail, use_container_width=True)
     else:
-        st.warning(f"Für {detail_symbol} konnten im Intervall {interval} keine ausreichenden Kursdaten geladen oder der Chart nicht erstellt werden. Bitte wähle ein anderes Intervall oder eine andere Aktie.")
+        st.warning(
+            f"Für {detail_symbol} konnten im Intervall {interval} keine ausreichenden Kursdaten geladen oder der Chart nicht erstellt werden. Bitte wähle ein anderes Intervall oder eine andere Aktie.")
 
     # --- HIER BEGINNT DER NEUE FORECAST-BEREICH ---
     if not df_detail.empty and "Close" in df_detail.columns:
@@ -719,63 +749,66 @@ if detail_symbol: # Nur fortfahren, wenn ein Symbol ausgewählt ist
 
         try:
             # Re-index the series to ensure continuous dates for forecasting,
-            # especially important for daily/weekly intervals where gaps might exist.
-            # Using only 'Close' prices for the model.
-            # Convert index to a regular DatetimeIndex without timezone for ExponentialSmoothing
-            series_to_forecast = df_detail["Close"].asfreq(interval).ffill().dropna()
+            # especially important for daily/weekly intervals where gaps might occur
+            # Use 'linear' interpolation to fill missing values for forecast
+            df_resampled = df_detail['Close'].resample(interval).last().ffill().bfill()
 
-            if series_to_forecast.index.tz is not None:
-                series_to_forecast.index = series_to_forecast.index.tz_convert(None)
-
-            if len(series_to_forecast) < max(20, 2 * forecast_periods_input): # Ensure enough data for fitting, e.g., at least 20 points
-                 st.warning(f"Nicht genügend Daten für eine sinnvolle Prognose. Benötige mindestens {max(20, 2 * forecast_periods_input)} Datenpunkte.")
+            # Ensure the series is long enough for Holt-Winters (at least a few data points)
+            if len(df_resampled) < 2:  # Min 2 points for a trend
+                st.info("Nicht genügend Datenpunkte für eine sinnvolle Prognose (mindestens 2 benötigt).")
             else:
-                # Fit the Exponential Smoothing model
-                # Using additive trend and no seasonality for simplicity
-                model = ExponentialSmoothing(series_to_forecast, trend='add', seasonal=None, initialization_method="estimated").fit()
+                # Holt-Winters Exponential Smoothing
+                # seasonality_period sollte zum Intervall passen (z.B. 7 für tägliche Daten, 4 für wöchentliche/monatliche Daten, etc.)
+                # Für eine allgemeine Anwendung ist es schwierig, eine perfekte seasonality_period zu wählen.
+                # Wir können es versuchen, basierend auf dem Intervall eine Standardzeit zu wählen oder saisonalität deaktivieren.
+                # Hier nehmen wir eine additive Methode ohne explizite Saisonaliät für Einfachheit.
+                # Wenn df_resampled sehr kurz ist, kann es zu Fehlern kommen, daher min_periods=1 für rolling oben.
 
-                # Make predictions
-                forecast = model.forecast(forecast_periods_input)
+                # Für "1d" könnte seasonality_period=7 (Wochentage) sinnvoll sein.
+                # Für "1wk" könnte seasonality_period=4 (Monate im Quartal) oder 52 (Jahre) sinnvoll sein.
+                # Für "1mo" könnte seasonality_period=12 (Monate im Jahr) sinnvoll sein.
 
-                # Create a DataFrame for forecast for easier plotting
-                forecast_df = pd.DataFrame(forecast)
-                forecast_df.columns = ['Forecast']
+                # Für eine einfache Prognose ohne komplexe Saisonaliätsannahmen:
+                fit = ExponentialSmoothing(
+                    df_resampled,
+                    trend='add',  # Additiver Trend
+                    seasonal=None,  # Keine Saisonalität angenommen, um komplexität zu vermeiden
+                    initialization_method="estimated"
+                ).fit()
 
-                # Create a new plotly figure for the forecast to avoid re-rendering the complex candlestick chart
-                # or add it to the existing fig_detail if that's preferred.
-                # Given "unterhalb vom candlestick Chart", a new chart is probably best.
-                forecast_fig = go.Figure()
-                forecast_fig.add_trace(go.Scatter(
-                    x=series_to_forecast.index,
-                    y=series_to_forecast,
+                forecast = fit.forecast(forecast_periods_input)
+
+                # Plotting Prognose
+                fig_forecast = go.Figure()
+
+                # Historische Daten
+                fig_forecast.add_trace(go.Scatter(
+                    x=df_resampled.index,
+                    y=df_resampled,
                     mode='lines',
-                    name='Historischer Kurs',
-                    line=dict(color='gray', width=1)
+                    name='Historische Kurse',
+                    line=dict(color='blue')
                 ))
-                forecast_fig.add_trace(go.Scatter(
-                    x=forecast_df.index,
-                    y=forecast_df['Forecast'],
+
+                # Prognose-Daten
+                fig_forecast.add_trace(go.Scatter(
+                    x=forecast.index,
+                    y=forecast,
                     mode='lines',
-                    name='Prognose',
-                    line=dict(color='blue', dash='dot', width=2)
+                    name=f'Prognose ({forecast_periods_input} Perioden)',
+                    line=dict(color='red', dash='dash')
                 ))
-                forecast_fig.update_layout(
+
+                fig_forecast.update_layout(
                     xaxis_title="Datum",
                     yaxis_title="Kurs",
-                    height=400,
+                    height=450,
                     template=plotly_template_global,
-                    legend_title="Legende",
                     plot_bgcolor=background_color,
                     paper_bgcolor=background_color,
                     font=dict(color=text_color)
                 )
-
-                st.plotly_chart(forecast_fig, use_container_width=True) # Display the new forecast chart
-
-                st.markdown("---")
-                st.markdown("#### Prognosewerte")
-                st.dataframe(forecast_df)
+                st.plotly_chart(fig_forecast, use_container_width=True)
 
         except Exception as e:
-            st.error(f"Fehler bei der Prognoseberechnung: {e}")
-            st.info("Bitte stelle sicher, dass ausreichend historische Daten für das ausgewählte Intervall vorhanden sind.")
+            st.warning(f"Fehler bei der Kursprognose für {detail_symbol} im Intervall {interval}: {e}")
