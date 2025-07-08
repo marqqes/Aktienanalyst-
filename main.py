@@ -646,12 +646,12 @@ else:
 if detail_symbol: # Nur fortfahren, wenn ein Symbol ausgewählt ist
     interval = st.selectbox(
         "Intervall auswählen",
-        options=["15m", "1h", "1d", "1wk"],
+        options=["15m", "1h", "1d", "1wk", "1mo"],
         index=2,
         key="detail_interval_select"
     )
 
-    if interval in ["1d", "1wk"]:
+    if interval in ["1d", "1wk", "1mo"]:
         forecast_method = st.radio(
             "Prognosemethode wählen:",
             options=["Keine", "Exponential Smoothing", "Prophet"],
@@ -679,7 +679,8 @@ if detail_symbol: # Nur fortfahren, wenn ein Symbol ausgewählt ist
         "15m": "15d",
         "1h": "40d",
         "1d": "1y",
-        "1wk": "5y"
+        "1wk": "5y",
+        "1mo": "8y"
     }
     period_detail = interval_period_map.get(interval) # Umbenannt
 
