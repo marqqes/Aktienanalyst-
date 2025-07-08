@@ -7,7 +7,6 @@ import datetime
 from prophet import Prophet
 import plotly.express as px
 import matplotlib.pyplot as plt
-import seaborn as sns
 import warnings
 warnings.filterwarnings("ignore")  # Prophet erzeugt viele FutureWarnings
 
