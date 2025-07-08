@@ -707,3 +707,75 @@ if detail_symbol: # Nur fortfahren, wenn ein Symbol ausgewählt ist
         st.plotly_chart(fig_detail, use_container_width=True)
     else:
         st.warning(f"Für {detail_symbol} konnten im Intervall {interval} keine ausreichenden Kursdaten geladen oder der Chart nicht erstellt werden. Bitte wähle ein anderes Intervall oder eine andere Aktie.")
+
+    # --- HIER BEGINNT DER NEUE FORECAST-BEREICH ---
+    if not df_detail.empty and "Close" in df_detail.columns:
+        st.markdown("### Kursprognose (Exponential Smoothing)")
+
+        forecast_periods_input = st.slider(
+            "Anzahl der Perioden für die Prognose (passend zum Intervall)",
+            min_value=1, max_value=30, value=7, key="forecast_periods"
+        )
+
+        try:
+            # Re-index the series to ensure continuous dates for forecasting,
+            # especially important for daily/weekly intervals where gaps might exist.
+            # Using only 'Close' prices for the model.
+            # Convert index to a regular DatetimeIndex without timezone for ExponentialSmoothing
+            series_to_forecast = df_detail["Close"].asfreq(interval).ffill().dropna()
+
+            if series_to_forecast.index.tz is not None:
+                series_to_forecast.index = series_to_forecast.index.tz_convert(None)
+
+            if len(series_to_forecast) < max(20, 2 * forecast_periods_input): # Ensure enough data for fitting, e.g., at least 20 points
+                 st.warning(f"Nicht genügend Daten für eine sinnvolle Prognose. Benötige mindestens {max(20, 2 * forecast_periods_input)} Datenpunkte.")
+            else:
+                # Fit the Exponential Smoothing model
+                # Using additive trend and no seasonality for simplicity
+                model = ExponentialSmoothing(series_to_forecast, trend='add', seasonal=None, initialization_method="estimated").fit()
+
+                # Make predictions
+                forecast = model.forecast(forecast_periods_input)
+
+                # Create a DataFrame for forecast for easier plotting
+                forecast_df = pd.DataFrame(forecast)
+                forecast_df.columns = ['Forecast']
+
+                # Create a new plotly figure for the forecast to avoid re-rendering the complex candlestick chart
+                # or add it to the existing fig_detail if that's preferred.
+                # Given "unterhalb vom candlestick Chart", a new chart is probably best.
+                forecast_fig = go.Figure()
+                forecast_fig.add_trace(go.Scatter(
+                    x=series_to_forecast.index,
+                    y=series_to_forecast,
+                    mode='lines',
+                    name='Historischer Kurs',
+                    line=dict(color='gray', width=1)
+                ))
+                forecast_fig.add_trace(go.Scatter(
+                    x=forecast_df.index,
+                    y=forecast_df['Forecast'],
+                    mode='lines',
+                    name='Prognose',
+                    line=dict(color='blue', dash='dot', width=2)
+                ))
+                forecast_fig.update_layout(
+                    xaxis_title="Datum",
+                    yaxis_title="Kurs",
+                    height=400,
+                    template=plotly_template_global,
+                    legend_title="Legende",
+                    plot_bgcolor=background_color,
+                    paper_bgcolor=background_color,
+                    font=dict(color=text_color)
+                )
+
+                st.plotly_chart(forecast_fig, use_container_width=True) # Display the new forecast chart
+
+                st.markdown("---")
+                st.markdown("#### Prognosewerte")
+                st.dataframe(forecast_df)
+
+        except Exception as e:
+            st.error(f"Fehler bei der Prognoseberechnung: {e}")
+            st.info("Bitte stelle sicher, dass ausreichend historische Daten für das ausgewählte Intervall vorhanden sind.")
