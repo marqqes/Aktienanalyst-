@@ -33,6 +33,12 @@ else:
 # --- Globales CSS anwenden ---
 st.markdown(f"""
     <style>
+        /* NEU: Überschriften und Markdown-Text linksbündig ausrichten */
+        h1, h2, h3, h4, h5, h6, .stMarkdown {{
+            text-align: left !important; /* !important, um sicherzustellen, dass es Vorrang hat */
+            width: 100%;
+        }}
+
         .stApp {{
             background-color: {background_color};
             color: {text_color};
@@ -509,7 +515,7 @@ for symbol in symbols:
                 if len(clean_returns) > 0:
                     volatility = clean_returns.std() * (252 ** 0.5)
                     sharpe_ratio = clean_returns.mean() / clean_returns.std() * (
-                                252 ** 0.5) if clean_returns.std() != 0 else 0.0
+                            252 ** 0.5) if clean_returns.std() != 0 else 0.0
 
                     cumulative = (1 + clean_returns).cumprod()
                     if not cumulative.empty:
@@ -784,67 +790,85 @@ if detail_symbol:
                         seasonal=None,  # Keine Saisonalität angenommen, um Komplexität zu vermeiden
                         initialization_method="estimated"
                     ).fit()
+
+                    # Erzeuge zukünftige Zeitstempel basierend auf der Resampling-Frequenz
+                    last_date = df_resampled.index[-1]
+                    future_dates = pd.date_range(start=last_date, periods=forecast_horizon + 1, freq=resample_freq)[1:]
+
                     forecast = fit.forecast(forecast_horizon)
+                    forecast_df = pd.DataFrame({'ds': future_dates, 'yhat': forecast.values})
 
                     fig_forecast.add_trace(go.Scatter(
-                        x=forecast.index,
-                        y=forecast,
+                        x=forecast_df['ds'],
+                        y=forecast_df['yhat'],
                         mode='lines',
-                        name=f'Prognose (ETS, {forecast_horizon} Perioden)',
-                        line=dict(color='red', dash='dash')
+                        name='Prognose (Exponential Smoothing)',
+                        line=dict(color='green', dash='dot')
                     ))
 
                 elif forecast_method == "Prophet":
-                    if len(df_prophet_input) < 2:  # Prophet braucht auch ausreichend Daten
-                        st.info("Nicht genügend Daten für Prophet-Prognose (mindestens 2 benötigt).")
-                    else:
-                        m = Prophet(daily_seasonality=True, weekly_seasonality=False,
-                                    yearly_seasonality=False)  # Standard-Saisonalität
-                        # Anpassung der Saisonalität basierend auf Intervall
-                        if resample_freq == "D":  # Täglich
-                            m.add_seasonality(name='weekly', period=7, fourier_order=3)
-                        elif resample_freq == "W":  # Wöchentlich
-                            m.add_seasonality(name='monthly', period=4.34,
-                                              fourier_order=3)  # Durchschnittliche Wochen im Monat
-                        elif resample_freq == "M":  # Monatlich
-                            m.add_seasonality(name='yearly', period=12, fourier_order=5)  # Jährlich
-                        elif resample_freq == "Q":  # Quartalsweise
-                            m.add_seasonality(name='yearly', period=4, fourier_order=2)  # Jährlich (4 Quartale)
+                    model = Prophet(
+                        yearly_seasonality=True,
+                        weekly_seasonality=True if interval not in ["1mo", "3mo"] else False,
+                        # Wochen-Saison nur für tägliche/wöchentliche Daten
+                        daily_seasonality=False  # Tägliche Saisonalität bei stündlichen/minütlichen Daten
+                    )
+                    model.fit(df_prophet_input)
 
-                        m.fit(df_prophet_input)
+                    # Erstelle zukünftige Dataframes für die Prognose
+                    # Abhängig vom Intervall, entsprechende Frequenz für future_dates
+                    freq_map_prophet = {
+                        "15m": "15min",
+                        "1h": "H",
+                        "1d": "D",
+                        "1wk": "W",
+                        "1mo": "M",
+                        "3mo": "Q"
+                    }
+                    future = model.make_future_dataframe(periods=forecast_horizon,
+                                                         freq=freq_map_prophet.get(interval, 'D'))
+                    forecast = model.predict(future)
 
-                        future = m.make_future_dataframe(periods=forecast_horizon, freq=resample_freq)
-                        forecast = m.predict(future)
-
-                        fig_forecast.add_trace(go.Scatter(
-                            x=forecast["ds"],
-                            y=forecast["yhat"],
-                            mode="lines",
-                            name=f"Prognose (Prophet, {forecast_horizon} Perioden)",
-                            line=dict(color="red", dash="dash")
-                        ))
-
-                        # Konfidenzintervall hinzufügen
-                        fig_forecast.add_trace(go.Scatter(
-                            x=pd.concat([forecast["ds"], forecast["ds"].iloc[::-1]]),
-                            y=pd.concat([forecast["yhat_upper"], forecast["yhat_lower"].iloc[::-1]]),
-                            fill='toself',
-                            fillcolor='rgba(255,0,0,0.1)',
-                            line=dict(color='rgba(255,255,255,0)'),
-                            name='Konfidenzintervall',
-                            showlegend=False
-                        ))
+                    fig_forecast.add_trace(go.Scatter(
+                        x=forecast['ds'],
+                        y=forecast['yhat'],
+                        mode='lines',
+                        name='Prognose (Prophet)',
+                        line=dict(color='green', dash='dot')
+                    ))
+                    fig_forecast.add_trace(go.Scatter(
+                        x=forecast['ds'],
+                        y=forecast['yhat_lower'],
+                        fill='tonexty',
+                        mode='lines',
+                        line=dict(width=0),
+                        showlegend=False,
+                        name='Untergrenze'
+                    ))
+                    fig_forecast.add_trace(go.Scatter(
+                        x=forecast['ds'],
+                        y=forecast['yhat_upper'],
+                        fill='tonexty',
+                        mode='lines',
+                        line=dict(width=0),
+                        showlegend=False,
+                        name='Obergrenze'
+                    ))
 
                 fig_forecast.update_layout(
                     xaxis_title="Datum",
                     yaxis_title="Kurs",
-                    height=450,
+                    height=500,
                     template=plotly_template_global,
+                    legend_title="Legende",
                     plot_bgcolor=background_color,
                     paper_bgcolor=background_color,
-                    font=dict(color=text_color)
+                    font=dict(color=text_color),
+                    hovermode="x unified"
                 )
                 st.plotly_chart(fig_forecast, use_container_width=True)
 
         except Exception as e:
-            st.warning(f"Fehler bei der Kursprognose für {detail_symbol} im Intervall {interval}: {e}")
+            st.error(f"Fehler bei der Prognose: {e}")
+            st.info(
+                "Bitte überprüfe, ob ausreichend historische Daten für das gewählte Intervall und den Prognosezeitraum vorhanden sind. Bei sehr kurzen Intervallen oder langen Prognosezeiträumen kann es zu Problemen kommen.")
