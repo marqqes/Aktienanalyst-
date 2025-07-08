@@ -578,7 +578,7 @@ else:
 if detail_symbol: # Nur fortfahren, wenn ein Symbol ausgewählt ist
     interval = st.selectbox(
         "Intervall auswählen",
-        options=["1 Tag", "1 Woche", "1Monat"],
+        options=["1 Tag", "1 Woche", "1 Monat", "3 Monate"],
         index=2,
         key="detail_interval_select"
     )
